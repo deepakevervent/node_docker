@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  nodejs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nodejs
+    container_name: nodejs
+    restart: unless-stopped
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - app-network
+
+  webserver:
+    image: nginx:latest
+    container_name: webserver
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./public:/var/www/html
+      - ./config/nginx:/etc/nginx/conf.d
+      - ./certbot-etc:/etc/letsencrypt
+      - ./certbot-var:/var/lib/letsencrypt
+      - ./dhparam:/etc/nginx/ssl/:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - nodejs
+    networks:
+      - app-network
+      
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./public:/var/www/html/:rw
+      - ./dhparam:/etc/letsencrypt/:rw
+    depends_on:
+      - webserver
+
+networks:
+  app-network:
+    driver: bridge 
